@@ -1,0 +1,26 @@
+PROMPT TO PASTE INTO v0.dev
+============================
+
+You are a senior React developer. I have a TypeScript React app using Vite,
+React Router, and TailwindCSS (with dark mode via a `dark` class on <html>).
+My existing `Project` type looks like this:
+
+interface Project {
+  id: number;
+  title: string;
+  description: string;
+  techStack: string[];
+  liveUrl?: string;
+  githubUrl: string;
+}
+
+Create a ProjectsPage component that:
+- Displays a responsive grid of project cards (2-3 columns on desktop, 1 column on mobile)
+- Has a filter bar above the grid that lets the user filter projects by a single tech stack tag (e.g. "React", "TypeScript")
+- Shows a loading skeleton state while data is "loading"
+- Shows an empty state message when no projects match the selected filter
+- Uses only Tailwind utility classes for styling, no separate CSS file
+- Is fully typed with TypeScript, no `any` types
+- Uses semantic HTML and includes ARIA attributes for the filter buttons (aria-pressed) and a loading region (role="status")
+
+Return the component as a single .tsx file with clear prop types.

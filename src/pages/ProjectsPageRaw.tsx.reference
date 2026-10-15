@@ -1,0 +1,228 @@
+import { useMemo, useState } from "react"
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface Project {
+  id: number
+  title: string
+  description: string
+  techStack: string[]
+  liveUrl?: string
+  githubUrl: string
+}
+
+export interface ProjectsPageProps {
+  /** The list of projects to display. */
+  projects: Project[]
+  /** When true, the loading skeletons are shown instead of the grid. */
+  isLoading?: boolean
+  /** Number of skeleton cards to render while loading. Defaults to 6. */
+  skeletonCount?: number
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+const ALL_FILTER = "All" as const
+
+export default function ProjectsPage({
+  projects,
+  isLoading = false,
+  skeletonCount = 6,
+}: ProjectsPageProps) {
+  const [activeTag, setActiveTag] = useState<string>(ALL_FILTER)
+
+  // Unique, sorted list of every tech tag across all projects.
+  const tags = useMemo<string[]>(() => {
+    const unique = new Set<string>()
+    for (const project of projects) {
+      for (const tech of project.techStack) unique.add(tech)
+    }
+    return [ALL_FILTER, ...Array.from(unique).sort((a, b) => a.localeCompare(b))]
+  }, [projects])
+
+  // Projects matching the currently selected tag.
+  const filteredProjects = useMemo<Project[]>(() => {
+    if (activeTag === ALL_FILTER) return projects
+    return projects.filter((project) => project.techStack.includes(activeTag))
+  }, [projects, activeTag])
+
+  return (
+    <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+      <header className="mb-8">
+        <h1 className="text-balance text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+          Projects
+        </h1>
+        <p className="mt-2 text-pretty leading-relaxed text-gray-600 dark:text-gray-400">
+          A collection of things I&apos;ve built. Filter by a technology to narrow things down.
+        </p>
+      </header>
+
+      {/* Filter bar */}
+      <nav aria-label="Filter projects by technology" className="mb-8">
+        <ul className="flex flex-wrap gap-2">
+          {tags.map((tag) => {
+            const isActive = tag === activeTag
+            return (
+              <li key={tag}>
+                <button
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => setActiveTag(tag)}
+                  className={[
+                    "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                    "focus-visible:ring-blue-500 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-950",
+                    isActive
+                      ? "border-blue-600 bg-blue-600 text-white dark:border-blue-500 dark:bg-blue-500"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800",
+                  ].join(" ")}
+                >
+                  {tag}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </nav>
+
+      {/* Loading state */}
+      {isLoading ? (
+        <div
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          <span className="sr-only">Loading projects…</span>
+          {Array.from({ length: skeletonCount }).map((_, index) => (
+            <ProjectCardSkeleton key={index} />
+          ))}
+        </div>
+      ) : filteredProjects.length === 0 ? (
+        /* Empty state */
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 px-6 py-16 text-center dark:border-gray-700 dark:bg-gray-900/50">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            No projects found
+          </h2>
+          <p className="mt-1 max-w-sm text-pretty leading-relaxed text-gray-600 dark:text-gray-400">
+            {`There are no projects tagged with "${activeTag}". Try selecting a different technology.`}
+          </p>
+          <button
+            type="button"
+            onClick={() => setActiveTag(ALL_FILTER)}
+            className="mt-4 rounded-full border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            Clear filter
+          </button>
+        </div>
+      ) : (
+        /* Project grid */
+        <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredProjects.map((project) => (
+            <li key={project.id}>
+              <ProjectCard project={project} activeTag={activeTag} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Project card
+// ---------------------------------------------------------------------------
+
+interface ProjectCardProps {
+  project: Project
+  /** The currently active tag, used to highlight the matching chip. */
+  activeTag: string
+}
+
+function ProjectCard({ project, activeTag }: ProjectCardProps) {
+  return (
+    <article className="flex h-full flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900">
+      <h2 className="text-balance text-lg font-semibold text-gray-900 dark:text-gray-50">
+        {project.title}
+      </h2>
+      <p className="mt-2 flex-1 text-pretty text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+        {project.description}
+      </p>
+
+      <ul className="mt-4 flex flex-wrap gap-1.5" aria-label="Technologies used">
+        {project.techStack.map((tech) => {
+          const isActive = tech === activeTag
+          return (
+            <li
+              key={tech}
+              className={[
+                "rounded-md px-2 py-0.5 text-xs font-medium",
+                isActive
+                  ? "bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300"
+                  : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+              ].join(" ")}
+            >
+              {tech}
+            </li>
+          )
+        })}
+      </ul>
+
+      <div className="mt-5 flex items-center gap-4 text-sm font-medium">
+        {project.liveUrl ? (
+          <a
+            href={project.liveUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-400"
+          >
+            Live demo
+            <span className="sr-only">{` for ${project.title} (opens in a new tab)`}</span>
+          </a>
+        ) : null}
+        <a
+          href={project.githubUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-gray-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-gray-300"
+        >
+          Source
+          <span className="sr-only">{` code for ${project.title} (opens in a new tab)`}</span>
+        </a>
+      </div>
+    </article>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Skeleton
+// ---------------------------------------------------------------------------
+
+function ProjectCardSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="flex h-full flex-col rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900"
+    >
+      <div className="h-5 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+      <div className="mt-4 space-y-2">
+        <div className="h-3 w-full animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+        <div className="h-3 w-full animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+        <div className="h-3 w-4/5 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+      </div>
+      <div className="mt-4 flex gap-1.5">
+        <div className="h-5 w-14 animate-pulse rounded-md bg-gray-200 dark:bg-gray-800" />
+        <div className="h-5 w-16 animate-pulse rounded-md bg-gray-200 dark:bg-gray-800" />
+        <div className="h-5 w-12 animate-pulse rounded-md bg-gray-200 dark:bg-gray-800" />
+      </div>
+      <div className="mt-5 flex gap-4">
+        <div className="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+        <div className="h-4 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+      </div>
+    </div>
+  )
+}
