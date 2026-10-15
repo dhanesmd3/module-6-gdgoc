@@ -2,9 +2,11 @@ import { Router } from 'express'
 import {
   getProject,
   listProjects,
+  patchProject,
   postProject,
   removeProject,
 } from '../controllers/projects.controller'
+import { requireAuth } from '../middleware/requireAuth'
 
 const router = Router()
 
@@ -50,8 +52,10 @@ router.get('/:id', getProject)
  * @openapi
  * /api/projects:
  *   post:
- *     summary: Create a new project
+ *     summary: Create a new project (owned by the logged-in user)
  *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -77,15 +81,67 @@ router.get('/:id', getProject)
  *         description: The created project
  *       400:
  *         description: Validation error
+ *       401:
+ *         description: Missing, invalid, or expired token
  */
-router.post('/', postProject)
+router.post('/', requireAuth, postProject)
+
+/**
+ * @openapi
+ * /api/projects/{id}:
+ *   patch:
+ *     summary: Update a project (owner only). Any subset of fields; techStack replaces the whole list.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               techStack:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               liveUrl:
+ *                 type: string
+ *                 nullable: true
+ *               githubUrl:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: The updated project
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Missing, invalid, or expired token
+ *       403:
+ *         description: Project belongs to another user
+ *       404:
+ *         description: Project not found
+ */
+router.patch('/:id', requireAuth, patchProject)
 
 /**
  * @openapi
  * /api/projects/{id}:
  *   delete:
- *     summary: Soft-delete a project by id (sets deletedAt, does not remove the row)
+ *     summary: Soft-delete a project by id (owner only; sets deletedAt, does not remove the row)
  *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -95,9 +151,13 @@ router.post('/', postProject)
  *     responses:
  *       204:
  *         description: Deleted successfully, no content returned
+ *       401:
+ *         description: Missing, invalid, or expired token
+ *       403:
+ *         description: Project belongs to another user
  *       404:
  *         description: Project not found
  */
-router.delete('/:id', removeProject)
+router.delete('/:id', requireAuth, removeProject)
 
 export default router

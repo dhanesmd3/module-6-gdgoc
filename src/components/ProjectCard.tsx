@@ -7,6 +7,9 @@ import type { Project } from '../types/project'
 interface ProjectCardProps extends Project {
   /** Tag yang sedang aktif (difilter), digunakan untuk highlight chip teknologi yang sesuai. */
   activeTag?: string
+  /** Hanya diisi kalau user yang login adalah pemilik project ini. */
+  onEdit?: () => void
+  onDelete?: () => void
 }
 
 function ProjectCard({
@@ -16,6 +19,8 @@ function ProjectCard({
   liveUrl,
   githubUrl,
   activeTag,
+  onEdit,
+  onDelete,
 }: ProjectCardProps) {
   return (
     <article className="flex h-full flex-col rounded-xl border border-border bg-surface p-6 transition-transform hover:-translate-y-1 hover:shadow-lg">
@@ -68,6 +73,22 @@ function ProjectCard({
           </a>
         )}
       </div>
+
+      {/* Aksi khusus pemilik project */}
+      {(onEdit || onDelete) && (
+        <div className="mt-4 flex gap-3 border-t border-border pt-3 font-mono text-xs">
+          {onEdit && (
+            <button type="button" onClick={onEdit} className="text-muted hover:text-primary">
+              Edit<span className="sr-only">{` ${title}`}</span>
+            </button>
+          )}
+          {onDelete && (
+            <button type="button" onClick={onDelete} className="text-muted hover:text-red-600">
+              Delete<span className="sr-only">{` ${title}`}</span>
+            </button>
+          )}
+        </div>
+      )}
     </article>
   )
 }

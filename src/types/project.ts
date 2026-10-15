@@ -5,4 +5,7 @@ export interface Project {
   techStack: string[];
   liveUrl?: string;
   githubUrl: string;
+  ownerId: number | null;
 }
+
+export type ProjectInput = Omit<Project, 'id' | 'ownerId'>;

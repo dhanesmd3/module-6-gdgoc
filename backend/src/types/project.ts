@@ -10,8 +10,17 @@ export const ProjectInputSchema = z.object({
 
 export type ProjectInput = z.infer<typeof ProjectInputSchema>
 
-// Shape returned by the API — matches the frontend's Project type exactly,
-// so no frontend changes are needed for this module.
+// PATCH body: every field optional, at least one required.
+// liveUrl may be null to remove it.
+export const ProjectUpdateSchema = ProjectInputSchema.extend({
+  liveUrl: z.string().url('liveUrl must be a valid URL').nullable(),
+})
+  .partial()
+  .refine((body) => Object.keys(body).length > 0, 'at least one field must be provided')
+
+export type ProjectUpdate = z.infer<typeof ProjectUpdateSchema>
+
+// Shape returned by the API — matches the frontend's Project type.
 export interface ProjectResponse {
   id: number
   title: string
@@ -19,4 +28,5 @@ export interface ProjectResponse {
   techStack: string[]
   liveUrl?: string
   githubUrl: string
+  ownerId: number | null
 }

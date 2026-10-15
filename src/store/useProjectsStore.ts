@@ -1,15 +1,14 @@
 import { create } from 'zustand'
-import type { Project } from '../types/project'
-
-// Base URL of the backend API. Falls back to localhost for local dev.
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api'
+import type { Project, ProjectInput } from '../types/project'
+import { API_BASE, authFetch, readError } from './useAuthStore'
 
 interface ProjectsState {
   projects: Project[]
   loading: boolean
   error: string | null
   fetchProjects: () => Promise<void>
-  addProject: (input: Omit<Project, 'id'>) => Promise<void>
+  addProject: (input: ProjectInput) => Promise<void>
+  updateProject: (id: number, input: ProjectInput) => Promise<void>
   removeProject: (id: number) => Promise<void>
 }
 
@@ -18,6 +17,7 @@ export const useProjectsStore = create<ProjectsState>((set) => ({
   loading: false,
   error: null,
 
+  // Reading projects is public, so this uses plain fetch.
   fetchProjects: async () => {
     set({ loading: true, error: null })
     try {
@@ -35,25 +35,27 @@ export const useProjectsStore = create<ProjectsState>((set) => ({
     }
   },
 
+  // Write operations go through authFetch, which attaches the JWT.
   addProject: async (input) => {
-    const res = await fetch(`${API_BASE}/projects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    })
-    if (!res.ok) {
-      const body = await res.json().catch(() => null)
-      throw new Error(body?.error ?? `Request failed with status ${res.status}`)
-    }
+    const res = await authFetch('/projects', { method: 'POST', body: JSON.stringify(input) })
+    if (!res.ok) throw new Error(await readError(res))
     const created: Project = await res.json()
-    set((state) => ({ projects: [...state.projects, created] }))
+    set((state) => ({ projects: [created, ...state.projects] }))
+  },
+
+  updateProject: async (id, input) => {
+    const res = await authFetch(`/projects/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ...input, liveUrl: input.liveUrl ?? null }),
+    })
+    if (!res.ok) throw new Error(await readError(res))
+    const updated: Project = await res.json()
+    set((state) => ({ projects: state.projects.map((p) => (p.id === id ? updated : p)) }))
   },
 
   removeProject: async (id) => {
-    const res = await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' })
-    if (!res.ok && res.status !== 204) {
-      throw new Error(`Request failed with status ${res.status}`)
-    }
+    const res = await authFetch(`/projects/${id}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error(await readError(res))
     set((state) => ({ projects: state.projects.filter((p) => p.id !== id) }))
   },
 }))

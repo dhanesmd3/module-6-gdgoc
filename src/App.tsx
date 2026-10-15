@@ -5,14 +5,23 @@ import Footer from './components/Footer'
 import HomePage from './pages/HomePage'
 import ProjectsPage from './pages/ProjectsPage'
 import AboutPage from './pages/AboutPage'
+import LoginPage from './pages/LoginPage'
 import useLocalStorage from './hooks/useLocalStorage'
+import { useAuthStore } from './store/useAuthStore'
 
 function App() {
   const [darkMode, setDarkMode] = useLocalStorage<boolean>('dark-mode', false)
+  const restoreSession = useAuthStore((state) => state.restoreSession)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
   }, [darkMode])
+
+  // The access token is only kept in memory, so after a reload we ask the
+  // backend for a new one using the httpOnly refresh cookie.
+  useEffect(() => {
+    restoreSession()
+  }, [restoreSession])
 
   return (
     <>
@@ -31,6 +40,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/login" element={<LoginPage />} />
         </Routes>
       </main>
       <Footer />

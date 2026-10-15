@@ -2,13 +2,31 @@ import { useEffect, useMemo, useState } from 'react'
 import ProjectCard from '../components/ProjectCard'
 import ProjectCardSkeleton from '../components/ProjectCardSkeleton'
 import ProjectFilters from '../components/ProjectFilters'
+import ProjectForm from '../components/ProjectForm'
 import { useProjectsStore } from '../store/useProjectsStore'
+import { useAuthStore } from '../store/useAuthStore'
+import type { Project } from '../types/project'
 
 const ALL_FILTER = 'All'
 
 function ProjectsPage() {
-  const { projects, loading, error, fetchProjects } = useProjectsStore()
+  const { projects, loading, error, fetchProjects, addProject, updateProject, removeProject } =
+    useProjectsStore()
+  const user = useAuthStore((state) => state.user)
   const [activeTag, setActiveTag] = useState<string>(ALL_FILTER)
+  const [creating, setCreating] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  async function handleDelete(project: Project) {
+    if (!window.confirm(`Delete "${project.title}"?`)) return
+    setActionError(null)
+    try {
+      await removeProject(project.id)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to delete project')
+    }
+  }
 
   // Fetch from the backend once when the page mounts.
   useEffect(() => {
@@ -35,6 +53,32 @@ function ProjectsPage() {
         <p className="mb-6 text-sm text-muted">
           A collection of things I&apos;ve built. Filter by a technology to narrow things down.
         </p>
+
+        {/* Only logged-in users can add projects; the backend enforces this too. */}
+        {user && !creating && (
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="mb-6 rounded-full bg-primaryStrong px-4 py-1.5 font-mono text-xs text-white hover:opacity-90"
+          >
+            + New project
+          </button>
+        )}
+        {user && creating && (
+          <div className="mb-6">
+            <ProjectForm
+              onSubmit={async (input) => {
+                await addProject(input)
+                setCreating(false)
+              }}
+              onCancel={() => setCreating(false)}
+            />
+          </div>
+        )}
+
+        {actionError && (
+          <p role="alert" className="mb-4 text-sm text-red-600 dark:text-red-400">{actionError}</p>
+        )}
 
         <ProjectFilters tags={tags} activeTag={activeTag} onSelect={setActiveTag} />
 
@@ -87,9 +131,33 @@ function ProjectsPage() {
 
         {!loading && !error && filteredProjects.length > 0 && (
           <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-5">
-            {filteredProjects.map((project) => (
-              <ProjectCard key={project.id} {...project} activeTag={activeTag} />
-            ))}
+            {filteredProjects.map((project) => {
+              const isOwner = user !== null && project.ownerId === user.id
+
+              if (isOwner && editingId === project.id) {
+                return (
+                  <ProjectForm
+                    key={project.id}
+                    initial={project}
+                    onSubmit={async (input) => {
+                      await updateProject(project.id, input)
+                      setEditingId(null)
+                    }}
+                    onCancel={() => setEditingId(null)}
+                  />
+                )
+              }
+
+              return (
+                <ProjectCard
+                  key={project.id}
+                  {...project}
+                  activeTag={activeTag}
+                  onEdit={isOwner ? () => setEditingId(project.id) : undefined}
+                  onDelete={isOwner ? () => handleDelete(project) : undefined}
+                />
+              )
+            })}
           </div>
         )}
       </div>

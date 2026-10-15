@@ -22,6 +22,13 @@ export function errorHandler(
     return res.status(err.statusCode).json({ error: err.message })
   }
 
+  // Errors thrown by express.json() (malformed JSON, body too large) carry a 4xx status.
+  const status = (err as { status?: unknown })?.status
+  if (typeof status === 'number' && status >= 400 && status < 500) {
+    return res.status(status).json({ error: 'Invalid request body' })
+  }
+
+  // Log the details on the server, but never send stack traces to the client.
   console.error(err)
   return res.status(500).json({ error: 'Internal server error' })
 }
